@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: kfc-mongodb
+    restart: always
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123456
+      MONGO_INITDB_DATABASE: kfc-database
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - kfc-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # Backend Node.js Application
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: kfc-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      DB_URL: mongodb://admin:admin123456@mongodb:27017/kfc-database?authSource=admin
+      FRONTEND_URL: http://localhost:3000
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - kfc-network
+    volumes:
+      - ./Backend:/app
+      - /app/node_modules
+    healthcheck:
+      test: curl -f http://localhost:8080/api/product || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend React Application
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_BACKEND_URL: http://localhost:8080
+    container_name: kfc-frontend
+    restart: always
+    ports:
+      - "3000:80"
+    environment:
+      REACT_APP_ENV: production
+    depends_on:
+      - backend
+    networks:
+      - kfc-network
+
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+
+networks:
+  kfc-network:
+    driver: bridge
