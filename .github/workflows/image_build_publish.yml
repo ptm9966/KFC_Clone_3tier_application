@@ -1,0 +1,41 @@
+name: build_and_publish_image
+permissions: 
+   contents: read
+   packages: write
+   id-token: write
+   pull-requests: write
+  
+on:
+  #push:
+    #branches:
+      #- main
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v6.0.2
+        
+      - name: docker_login
+        uses: docker/login-action@v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: build-image_frontend
+        working-directory: Frontend
+        run: |
+
+          docker build -f Dockerfile -t ghcr.io/ptm9966/kcf_frontend:${{ github.sha }} .
+          docker image
+      - name: build-image_frontend
+        working-directory: Backend
+        run: |
+
+          docker build -f Dockerfile -t ghcr.io/ptm9966/kcf_backend:${{ github.sha }} .
+          docker images
+          
+        
+        
+        
