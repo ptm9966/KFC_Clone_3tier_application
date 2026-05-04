@@ -72,6 +72,21 @@ services:
     networks:
       - kfc-network
 
+  # Load Testing Service
+  loadtest:
+    build:
+      context: ./LoadTesting
+      dockerfile: Dockerfile
+    container_name: kfc-loadtest
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - kfc-network
+    environment:
+      API_BASE_URL: http://backend:8080
+    restart: "no"
+
 volumes:
   mongodb_data:
     driver: local

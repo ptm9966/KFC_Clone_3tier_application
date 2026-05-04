@@ -1,0 +1,82 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: kfc-dev-deployment
+
+# Namespace for all resources
+namespace: dev
+
+# Common labels applied to all resources
+commonLabels:
+  app: kfc-clone
+  environment: development
+
+# Resources to include
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - mongodb-deployment.yaml
+  - backend-deployment.yaml
+  - frontend-deployment.yaml
+  - ingress.yaml
+
+# Image transformations
+images:
+  - name: kfc-backend
+    newTag: latest
+  - name: kfc-frontend
+    newTag: latest
+
+# ConfigMap generator for additional configuration
+configMapGenerator:
+  - name: app-config
+    literals:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=debug
+
+# Replica count modifications
+replicas:
+  - name: kfc-backend
+    count: 2
+  - name: kfc-frontend
+    count: 2
+  - name: kfc-mongodb
+    count: 1
+
+# Resource limits and requests
+patchesStrategicMerge:
+  - |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: kfc-backend
+    spec:
+      template:
+        spec:
+          containers:
+          - name: backend
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "250m"
+              limits:
+                memory: "512Mi"
+                cpu: "500m"
+  - |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: kfc-frontend
+    spec:
+      template:
+        spec:
+          containers:
+          - name: frontend
+            resources:
+              requests:
+                memory: "128Mi"
+                cpu: "100m"
+              limits:
+                memory: "256Mi"
+                cpu: "200m"

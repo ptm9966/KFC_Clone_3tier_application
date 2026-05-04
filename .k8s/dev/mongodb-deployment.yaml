@@ -1,0 +1,180 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kfc-mongodb
+  namespace: dev
+  labels:
+    app: kfc-mongodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kfc-mongodb
+  template:
+    metadata:
+      labels:
+        app: kfc-mongodb
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:7.0
+        ports:
+        - containerPort: 27017
+        env:
+        - name: MONGO_INITDB_ROOT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: kfc-secrets
+              key: MONGO_INITDB_ROOT_USERNAME
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kfc-secrets
+              key: MONGO_INITDB_ROOT_PASSWORD
+        - name: MONGO_INITDB_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: kfc-secrets
+              key: MONGO_INITDB_DATABASE
+        volumeMounts:
+        - name: mongodb-data
+          mountPath: /data/db
+        - name: mongodb-config
+          mountPath: /data/configdb
+        - name: init-script
+          mountPath: /docker-entrypoint-initdb.d/
+        readinessProbe:
+          exec:
+            command:
+            - mongo
+            - --eval
+            - "db.adminCommand('ping')"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command:
+            - mongo
+            - --eval
+            - "db.adminCommand('ping')"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: mongodb-data
+        persistentVolumeClaim:
+          claimName: mongodb-pvc
+      - name: mongodb-config
+        persistentVolumeClaim:
+          claimName: mongodb-config-pvc
+      - name: init-script
+        configMap:
+          name: mongodb-init-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kfc-mongodb
+  namespace: dev
+  labels:
+    app: kfc-mongodb
+spec:
+  selector:
+    app: kfc-mongodb
+  ports:
+  - port: 27017
+    targetPort: 27017
+  clusterIP: None  # Headless service for MongoDB
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-pvc
+  namespace: dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-config-pvc
+  namespace: dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: ConfigMap 
+metadata:
+  name: mongodb-init-config
+  namespace: dev
+data:
+  init-mongo.js: |
+    // MongoDB initialization script to load products from product.json
+    db = db.getSiblingDB('kfc-database');
+
+    // Drop existing collection if it exists (optional, remove if you want to keep old data)
+    db.products.drop();
+
+    // Insert product data
+    const products = [
+        {
+            "image": "https://orderserv-kfc-assets.yum.com/15895bb59f7b4bb588ee933f8cd5344a/images/items/xl/D-K350.jpg?ver=19.25\t",
+            "title": "Pepsi PET",
+            "desc": "Pepsi PET",
+            "categories": "BEVERAGES",
+            "price": 57.14,
+            "type": "Veg",
+            "serve": "",
+            "id": "8cb04d07-9971-48f7-8f38-f1cb9a23ed99"
+        },
+        {
+            "image": "https://orderserv-kfc-assets.yum.com/15895bb59f7b4bb588ee933f8cd5344a/images/items/xl/D-K485.jpg?ver=19.25",
+            "title": "Pepsi Can 330 ml",
+            "desc": "Pepsi Can 330 ml",
+            "categories": "BEVERAGES",
+            "price": 57.14,
+            "type": "Veg",
+            "serve": "",
+            "id": "567f77fb-04dd-4e0a-afd5-708ea2ffcafd"
+        },
+        {
+            "image": "https://orderserv-kfc-assets.yum.com/15895bb59f7b4bb588ee933f8cd5344a/images/items/xl/D-K487.jpg?ver=19.25\t",
+            "title": "7UP Can 330 ml",
+            "desc": "7UP Can 330 ml",
+            "categories": "BEVERAGES",
+            "price": 57.14,
+            "type": "Veg",
+            "serve": "",
+            "id": "861b9c57-c4b3-4755-a920-1341004b8257"
+        },
+        {
+            "image": "https://orderserv-kfc-assets.yum.com/15895bb59f7b4bb588ee933f8cd5344a/images/items/xl/D-K486.jpg?ver=19.25",
+            "title": "Pepsi Black Can 330 ml",
+            "desc": "Pepsi Black Can 330 ml",
+            "categories": "BEVERAGES",
+            "price": 57.14,
+            "type": "Veg",
+            "serve": "",
+            "id": "cdad1962-3f7f-498d-94f2-fcebe5e1ddc2"
+        },
+        {
+            "image": "https://orderserv-kfc-assets.yum.com/15895bb59f7b4bb588ee933f8cd5344a/images/items/xl/D-K488.jpg?ver=19.25",
+            "title": "Mirinda Can 330 ml",
+            "desc": "Mirinda Can 330 ml",
+            "categories": "BEVERAGES",
+            "price": 57.14,
+            "type": "Veg",
+            "serve": "",
+            "id": "f4e980c8-4197-4adf-9b52-b0068325df43"
+        }
+    ];
+
+    db.products.insertMany(products);
+    print('Products inserted successfully');

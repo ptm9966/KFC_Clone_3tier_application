@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kfc-frontend
+  namespace: dev
+  labels:
+    app: kfc-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kfc-frontend
+  template:
+    metadata:
+      labels:
+        app: kfc-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: kfc-frontend:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: REACT_APP_API_BASE_URL
+          value: "http://kfc-backend:8080"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kfc-frontend
+  namespace: dev
+  labels:
+    app: kfc-frontend
+spec:
+  selector:
+    app: kfc-frontend
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  type: ClusterIP
