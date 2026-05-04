@@ -27,7 +27,7 @@ jobs:
         working-directory: Frontend
         run: |
 
-          docker build -f Dockerfile -t ghcr.io/ptm9966/kcf_frontend:${{ github.sha }} .
+          docker build --build-arg REACT_APP_BACKEND_URL=http://kfc-backend:8080  -f Dockerfile -t ghcr.io/ptm9966/kcf_frontend:${{ github.sha }} .
           docker images
       - name: build-image_backend
         working-directory: Backend
