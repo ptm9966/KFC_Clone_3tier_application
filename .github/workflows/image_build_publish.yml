@@ -28,14 +28,20 @@ jobs:
         run: |
 
           docker build -f Dockerfile -t ghcr.io/ptm9966/kcf_frontend:${{ github.sha }} .
-          docker image
-      - name: build-image_frontend
+          docker images
+      - name: build-image_backend
         working-directory: Backend
         run: |
 
           docker build -f Dockerfile -t ghcr.io/ptm9966/kcf_backend:${{ github.sha }} .
           docker images
-          
+      - name: publish_forntend_image
+        run: |
+
+            docker push ghcr.io/ptm9966/kcf_frontend:${{ github.sha }}
+            docker push ghcr.io/ptm9966/kcf_backend:${{ github.sha }}
+         
+        
         
         
         
