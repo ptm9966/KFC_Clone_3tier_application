@@ -43,22 +43,6 @@ spec:
           mountPath: /data/configdb
         - name: init-script
           mountPath: /docker-entrypoint-initdb.d/
-        readinessProbe:
-          exec:
-            command:
-            - mongo
-            - --eval
-            - "db.adminCommand('ping')"
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        livenessProbe:
-          exec:
-            command:
-            - mongo
-            - --eval
-            - "db.adminCommand('ping')"
-          initialDelaySeconds: 30
-          periodSeconds: 10
       volumes:
       - name: mongodb-data
         persistentVolumeClaim:
@@ -83,7 +67,7 @@ spec:
   ports:
   - port: 27017
     targetPort: 27017
-  clusterIP: None  # Headless service for MongoDB
+  #clusterIP: None  # Headless service for MongoDB
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

@@ -17,12 +17,12 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: kfc-frontend:latest
+        image: ghcr.io/ptm9966/kcf_frontend:d117b109543486514fb6d9ed35dc2cdc3ce3ac5d
         ports:
         - containerPort: 80
         env:
-        - name: REACT_APP_API_BASE_URL
-          value: "http://kfc-backend:8080"
+        - name: REACT_APP_BACKEND_URL
+          value: "/"
         readinessProbe:
           httpGet:
             path: /
@@ -46,7 +46,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: kfc-frontend
+  name: frontend-service
   namespace: dev
   labels:
     app: kfc-frontend
@@ -57,4 +57,4 @@ spec:
   - port: 80
     targetPort: 80
     protocol: TCP
-  type: ClusterIP
+  type: LoadBalancer

@@ -17,28 +17,28 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: kfc-frontend
+            name: frontend-service
             port:
               number: 80
       - path: /api
         pathType: Prefix
         backend:
           service:
-            name: kfc-backend
+            name: backend-service
             port:
               number: 8080
       - path: /auth
         pathType: Prefix
         backend:
           service:
-            name: kfc-backend
+            name: backend-service
             port:
               number: 8080
       - path: /api-docs
         pathType: Prefix
         backend:
           service:
-            name: kfc-backend
+            name: backend-service
             port:
               number: 8080
 ---

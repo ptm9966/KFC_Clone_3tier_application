@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: kfc-backend:latest
+        image: ghcr.io/ptm9966/kcf_backend:6160a17fee7fc73e905e84f69bbf0bab806285ba
         ports:
         - containerPort: 8080
         env:
@@ -57,11 +57,10 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
----
 apiVersion: v1
 kind: Service
 metadata:
-  name: kfc-backend
+  name: backend-service
   namespace: dev
   labels:
     app: kfc-backend
