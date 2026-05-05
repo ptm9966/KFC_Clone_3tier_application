@@ -164,7 +164,7 @@ kubectl get ingress -n dev
 kubectl exec -it deployment/kfc-backend -n dev -- curl kfc-mongodb:27017
 
 # Port forward for local testing
-kubectl port-forward svc/kfc-backend 8080:8080 -n dev
+kubectl port-forward svc/backend-service 8080:8080 -n dev
 ```
 
 ## 🔄 Scaling
