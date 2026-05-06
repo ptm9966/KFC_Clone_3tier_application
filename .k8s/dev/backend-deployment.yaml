@@ -33,11 +33,11 @@ spec:
             configMapKeyRef:
               name: kfc-config
               key: DB_URL
-        - name: FRONTEND_URL
+        - name: ALLOWED_ORIGINS
           valueFrom:
             configMapKeyRef:
               name: kfc-config
-              key: FRONTEND_URL
+              key: ALLOWED_ORIGINS
         readinessProbe:
           httpGet:
             path: /api-docs

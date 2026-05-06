@@ -21,8 +21,9 @@ spec:
         ports:
         - containerPort: 80
         env:
+        # Backend URL is empty - frontend will use same origin (/api proxy in nginx)
         - name: REACT_APP_BACKEND_URL
-          value: "/"
+          value: ""
         readinessProbe:
           httpGet:
             path: /
@@ -57,4 +58,5 @@ spec:
   - port: 80
     targetPort: 80
     protocol: TCP
+    name: http
   type: LoadBalancer

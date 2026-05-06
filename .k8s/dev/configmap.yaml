@@ -5,7 +5,10 @@ metadata:
   namespace: dev
 data:
   NODE_ENV: "production"
-  FRONTEND_URL: "http://frontend-service"
+  # ALLOWED_ORIGINS: Empty/not set = Allow all origins (Development)
+  # For production, set to comma-separated list:
+  # ALLOWED_ORIGINS: "http://20.223.23.189, http://kfc.local, https://yourdomain.com"
+  ALLOWED_ORIGINS: ""
   DB_URL: "mongodb://admin:admin123456@kfc-mongodb:27017/kfc-database?authSource=admin"
 ---
 apiVersion: v1
