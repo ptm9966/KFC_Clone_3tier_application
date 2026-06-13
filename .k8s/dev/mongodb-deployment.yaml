@@ -75,6 +75,7 @@ metadata:
   name: mongodb-pvc
   namespace: dev
 spec:
+  storageClassName: mongodb-sc
   accessModes:
     - ReadWriteOnce
   resources:
@@ -87,6 +88,7 @@ metadata:
   name: mongodb-config-pvc
   namespace: dev
 spec:
+  storageClassName: mongodb-sc
   accessModes:
     - ReadWriteOnce
   resources:
