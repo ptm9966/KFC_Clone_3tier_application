@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: ghcr.io/ptm9966/kcf_backend:69ea64ee49b7d077537bcd02fc917fa550ecedfd
+        image: ghcr.io/ptm9966/kcf_backend:5c636077a0acf13df9e7abfd705e5f81ef4a1b5a
         ports:
         - containerPort: 8080
         env:
@@ -72,4 +72,4 @@ spec:
   - port: 8080
     targetPort: 8080
     protocol: TCP
-  type: LoadBalancer
+  type: ClusterIP

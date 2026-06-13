@@ -10,15 +10,4 @@ data:
   # ALLOWED_ORIGINS: "http://20.223.23.189, http://kfc.local, https://yourdomain.com"
   ALLOWED_ORIGINS: ""
   DB_URL: "mongodb://admin:admin123456@kfc-mongodb:27017/kfc-database?authSource=admin"
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: kfc-secrets
-  namespace: dev
-type: Opaque
-data:
-  # Base64 encoded values - replace with actual encoded values
-  MONGO_INITDB_ROOT_USERNAME: YWRtaW4=  # admin
-  MONGO_INITDB_ROOT_PASSWORD: YWRtaW4xMjM0NTY=  # admin123456
-  MONGO_INITDB_DATABASE: a2ZjLWRhdGFiYXNl  # kfc-database
+
