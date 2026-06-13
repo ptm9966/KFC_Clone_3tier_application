@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: ghcr.io/ptm9966/kcf_backend:5c636077a0acf13df9e7abfd705e5f81ef4a1b5a
+        image: ghcr.io/ptm9966/kcf_backend:bc0577166333fa4db4821ced5f2d9b0dc73d716e
         ports:
         - containerPort: 8080
         env:

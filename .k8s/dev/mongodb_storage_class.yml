@@ -8,7 +8,8 @@ parameters:
   fsType: ext4
 # provisioner for azure
 #provisioner: disk.csi.azure.com
-#  parameters:
-#    skuName: Premium_LRS
+#parameters:
+#  skuName: Standard_LRS
+#  kind: Managed  
 volumeBindingMode: WaitForFirstConsumer
 reclaimPolicy: Retain
