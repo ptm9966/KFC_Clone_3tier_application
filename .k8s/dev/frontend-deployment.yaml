@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ghcr.io/ptm9966/kcf_frontend:69ea64ee49b7d077537bcd02fc917fa550ecedfd
+        image: ghcr.io/ptm9966/kcf_frontend:25e07468acdee1249e42e72ac1315ed78f3578c5
         ports:
         - containerPort: 80
         env:
