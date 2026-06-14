@@ -17,12 +17,13 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ghcr.io/ptm9966/kcf_frontend:5bd81d4d23d85193e0e8f9672440aff8951684c1
+        image: ghcr.io/ptm9966/kcf_frontend:bc0577166333fa4db4821ced5f2d9b0dc73d716e
         ports:
         - containerPort: 80
         env:
+        # Backend URL is empty - frontend will use same origin (/api proxy in nginx)
         - name: REACT_APP_BACKEND_URL
-          value: "/"
+          value: ""
         readinessProbe:
           httpGet:
             path: /
@@ -57,4 +58,5 @@ spec:
   - port: 80
     targetPort: 80
     protocol: TCP
+    name: http
   type: LoadBalancer

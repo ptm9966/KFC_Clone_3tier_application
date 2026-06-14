@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: ghcr.io/ptm9966/kcf_backend:5bd81d4d23d85193e0e8f9672440aff8951684c1
+        image: ghcr.io/ptm9966/kcf_backend:bc0577166333fa4db4821ced5f2d9b0dc73d716e
         ports:
         - containerPort: 8080
         env:
@@ -33,11 +33,11 @@ spec:
             configMapKeyRef:
               name: kfc-config
               key: DB_URL
-        - name: FRONTEND_URL
+        - name: ALLOWED_ORIGINS
           valueFrom:
             configMapKeyRef:
               name: kfc-config
-              key: FRONTEND_URL
+              key: ALLOWED_ORIGINS
         readinessProbe:
           httpGet:
             path: /api-docs

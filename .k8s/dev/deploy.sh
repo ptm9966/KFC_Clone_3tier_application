@@ -43,11 +43,12 @@ fi
 
 echo "📋 Deployment Steps:"
 echo "1. Create namespace"
-echo "2. Deploy ConfigMaps and Secrets"
-echo "3. Deploy MongoDB"
-echo "4. Deploy Backend"
-echo "5. Deploy Frontend"
-echo "6. Deploy Ingress"
+echo "2. create storage classes"
+echo "2. Deploy momgodb ConfigMaps and Secrets = mongodb_data_configmap.yaml"
+echo "3. Deploy MongoDB = mongodb-deployment.yaml"
+echo "4. Deploy Backend conigmap = backend_configmap.yaml"
+echo "5. Deploy backend deployment = backend-deployment.yaml"
+echo "6. Deploy frontend deployment = frontend-deployment.yaml"
 echo ""
 
 # Create namespace

@@ -111,7 +111,7 @@ docker run -d --name kfc-frontend --network kfc-network \
 ### Frontend URL
 
 - App served at: `http://localhost:3000`
-
+ 
 ---
 
 ## 4) Use Docker Compose (optional)
