@@ -14,7 +14,7 @@ commonLabels:
 
 # Resources to include
 resources:
-  - mongodb_storage_class.yaml
+  - mongodb_storage_class.yml
   - mongodb_data_configmap.yaml
   - mongodb-deployment.yaml
   - backend_configmap.yaml
