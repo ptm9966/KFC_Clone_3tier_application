@@ -2,13 +2,21 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: kfc-ingress
-  namespace: dev
+  namespace: kfc-qa
   annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # Enable SSL redirect
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # This annotation triggers cert-manager to automatically create a certificate
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - bikkam.online
+      secretName: kfc-tls
   rules:
-  - host: kfc.local  # Change this to your domain
+  - host: bikkam.online  # Change this to your domain
     http:
       paths:
       # Backend API routes (more specific paths first)
@@ -41,32 +49,3 @@ spec:
             name: frontend-service
             port:
               number: 80
----
-# Network Policy for security
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: kfc-network-policy
-  namespace: dev
-spec:
-  podSelector: {}
-  policyTypes:
-  - Ingress
-  - Egress
-  ingress:
-  - from:
-    - podSelector: {}
-    ports:
-    - protocol: TCP
-      port: 8080  # Backend port
-    - protocol: TCP
-      port: 80    # Frontend port
-    - protocol: TCP
-      port: 27017 # MongoDB port
-  egress:
-  - to: []
-    ports:
-    - protocol: TCP
-      port: 53  # DNS
-    - protocol: UDP
-      port: 53  # DNS

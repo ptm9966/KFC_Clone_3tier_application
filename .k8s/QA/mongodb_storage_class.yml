@@ -1,0 +1,16 @@
+apiVersion: storage.k8s.io/v1 
+kind: StorageClass
+metadata:
+  name: mongodb-sc
+  namespace: kfc-qa
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  fsType: ext4
+# provisioner for azure
+#provisioner: disk.csi.azure.com
+#parameters:
+#  skuName: Standard_LRS
+#  kind: Managed  
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain

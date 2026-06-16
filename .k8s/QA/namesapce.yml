@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kfc-qa
+  labels:
+    name: kfc-qa
+    environment: kfc-qa
