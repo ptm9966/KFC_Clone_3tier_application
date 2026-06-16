@@ -14,12 +14,12 @@ commonLabels:
 
 # Resources to include
 resources:
-  - namespace.yaml
-  - configmap.yaml
+  - mongodb_storage_class.yaml
+  - mongodb_data_configmap.yaml
   - mongodb-deployment.yaml
+  - backend_configmap.yaml
   - backend-deployment.yaml
   - frontend-deployment.yaml
-  - ingress.yaml
 
 # Image transformations
 images:
