@@ -1,0 +1,20 @@
+
+# cluster issuer for Let's Encrypt ontime activity for cluster level
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    # Let's Encrypt Production API
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # Email used for Let's Encrypt registration and renewal notices
+    email: purushottam3366@gmail.com
+    # Name of a secret used to store the ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    # Enable the HTTP-01 challenge provider
+    solvers:
+    - http01:
+        ingress:
+          ingressClassName: nginx
