@@ -45,38 +45,48 @@ replicas:
     count: 1
 
 # Resource limits and requests
-patchesStrategicMerge:
-  - |-
-    apiVersion: apps/v1
-    kind: Deployment
-    metadata:
+patches:
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: kfc-backend
+        namespace: dev
+      spec:
+        template:
+          spec:
+            containers:
+            - name: backend
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "250m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "500m"
+    target:
+      kind: Deployment
       name: kfc-backend
-    spec:
-      template:
-        spec:
-          containers:
-          - name: backend
-            resources:
-              requests:
-                memory: "256Mi"
-                cpu: "250m"
-              limits:
-                memory: "512Mi"
-                cpu: "500m"
-  - |-
-    apiVersion: apps/v1
-    kind: Deployment
-    metadata:
+      namespace: dev
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: kfc-frontend
+        namespace: dev
+      spec:
+        template:
+          spec:
+            containers:
+            - name: frontend
+              resources:
+                requests:
+                  memory: "128Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "256Mi"
+                  cpu: "200m"
+    target:
+      kind: Deployment
       name: kfc-frontend
-    spec:
-      template:
-        spec:
-          containers:
-          - name: frontend
-            resources:
-              requests:
-                memory: "128Mi"
-                cpu: "100m"
-              limits:
-                memory: "256Mi"
-                cpu: "200m"
+      namespace: dev
