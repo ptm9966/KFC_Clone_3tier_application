@@ -22,9 +22,12 @@ PRODUCTS_ENDPOINT = f"{API_ENDPOINT}/product"
 ORDERS_ENDPOINT = f"{API_ENDPOINT}/orders"
 
 # Load Testing Configuration
-NUM_USERS = 5  # Number of test users to create
-NUM_ORDERS_PER_USER = 3  # Number of orders each user will place
-CONCURRENT_REQUESTS = 2  # Number of concurrent threads
+NUM_USERS = int(os.getenv("LOAD_TEST_USERS", "5"))
+NUM_ORDERS_PER_USER = int(os.getenv("LOAD_TEST_ORDERS_PER_USER", "3"))
+CONCURRENT_REQUESTS = int(os.getenv("LOAD_TEST_CONCURRENCY", "2"))
+USER_NUMBER_OFFSET = int(
+    os.getenv("LOAD_TEST_USER_OFFSET", str(int(time.time()) % 9_000_000))
+)
 PAYMENT_METHODS = ["Card", "UPI", "Cash"]
 ORDER_STATUSES = ["Placed"]
 
@@ -140,12 +143,17 @@ class LoadTester:
         
         for product in sampled_products:
             qty = random.randint(1, 3)
+            try:
+                price = float(product.get("price", 0))
+            except (TypeError, ValueError):
+                price = 0
+
             item = {
                 "productId": product.get("_id", product.get("id")),
                 "title": product.get("title", "Unknown Product"),
                 "image": product.get("image", ""),
                 "desc": product.get("desc", ""),
-                "price": product.get("price", 0),
+                "price": price,
                 "qty": qty
             }
             selected_items.append(item)
@@ -229,7 +237,7 @@ class LoadTester:
         
         users = []
         for i in range(1, NUM_USERS + 1):
-            user = self.create_user(i)
+            user = self.create_user(USER_NUMBER_OFFSET + i)
             if user:
                 # Login to get token
                 token = self.login_user(user["mobile"], user["password"])
@@ -401,6 +409,7 @@ def main():
         print(f"\n✗ Error during load test: {e}")
         import traceback
         traceback.print_exc()
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

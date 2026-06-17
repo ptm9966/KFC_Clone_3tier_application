@@ -41,7 +41,7 @@ python load_test_orders.py
 ### Option 2: Advanced Locust Load Test
 
 ```bash
-locust -f load_test_locust.py --host=http://localhost:8080
+python -m locust -f load_test_locust.py --host=http://localhost:8080
 ```
 
 Then open: http://localhost:8089 in your browser
@@ -56,7 +56,7 @@ Then open: http://localhost:8089 in your browser
 ### Option 3: Headless Locust Test
 
 ```bash
-locust -f load_test_locust.py --host=http://localhost:8080 \
+python -m locust -f load_test_locust.py --host=http://localhost:8080 \
   --users 50 --spawn-rate 5 --run-time 5m --headless
 ```
 

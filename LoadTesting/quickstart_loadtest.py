@@ -6,6 +6,7 @@ Run pre-configured test scenarios with simple commands
 import subprocess
 import sys
 import json
+import os
 from pathlib import Path
 from datetime import datetime
 
@@ -157,15 +158,20 @@ def run_test(users, orders_per_user, concurrent, scenario_name):
     
     # Update script
     print("\n⏳ Preparing test script...")
-    if not modify_load_test_script(users, orders_per_user, concurrent):
-        return False
+    env = os.environ.copy()
+    env.update({
+        "LOAD_TEST_USERS": str(users),
+        "LOAD_TEST_ORDERS_PER_USER": str(orders_per_user),
+        "LOAD_TEST_CONCURRENCY": str(concurrent),
+    })
     
     # Run test
     print("▶ Running load test...\n")
     try:
         result = subprocess.run(
             [sys.executable, "load_test_orders.py"],
-            check=False
+            check=False,
+            env=env
         )
         return result.returncode == 0
     except Exception as e:

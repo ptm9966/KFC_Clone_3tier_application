@@ -39,6 +39,7 @@ services:
       PORT: 8080
       DB_URL: mongodb://admin:admin123456@mongodb:27017/kfc-database?authSource=admin
       FRONTEND_URL: http://localhost:3000
+      ALLOWED_ORIGINS: http://localhost:3000
     depends_on:
       mongodb:
         condition: service_healthy
@@ -48,7 +49,11 @@ services:
       - ./Backend:/app
       - /app/node_modules
     healthcheck:
-      test: curl -f http://localhost:8080/api/product || exit 1
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8080/metrics').then(response => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
       interval: 30s
       timeout: 10s
       retries: 3
@@ -60,7 +65,7 @@ services:
       context: ./Frontend
       dockerfile: Dockerfile
       args:
-        REACT_APP_BACKEND_URL: http://localhost:8080
+        REACT_APP_BACKEND_URL: ""
     container_name: kfc-frontend
     restart: always
     ports:
@@ -68,7 +73,8 @@ services:
     environment:
       REACT_APP_ENV: production
     depends_on:
-      - backend-service
+      backend-service:
+        condition: service_healthy
     networks:
       - kfc-network
 

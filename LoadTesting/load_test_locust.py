@@ -36,7 +36,7 @@ class OrderLoadTestTasks(TaskSet):
         password = f"TestPass@{user_num}"
         
         # Signup
-        response = self.client.post(
+        with self.client.post(
             f"{BASE_AUTH_URL}/signup",
             json={
                 "name": self.user_name,
@@ -45,32 +45,31 @@ class OrderLoadTestTasks(TaskSet):
                 "password": password
             },
             catch_response=True
-        )
-        
-        if response.status_code in [200, 201]:
-            response.success()
-            
-            # Login
-            login_response = self.client.post(
+        ) as response:
+            if response.status_code in [200, 201]:
+                response.success()
+            else:
+                response.failure(f"Signup failed: {response.status_code}")
+                return
+
+        # Login
+        with self.client.post(
                 f"{BASE_AUTH_URL}/login",
                 json={
                     "mobile": self.user_mobile,
                     "password": password
                 },
                 catch_response=True
-            )
-            
+        ) as login_response:
             if login_response.status_code == 200:
                 self.user_token = login_response.json().get("token")
                 login_response.success()
             else:
                 login_response.failure(f"Login failed: {login_response.status_code}")
-        else:
-            response.failure(f"Signup failed: {response.status_code}")
     
     def get_products(self):
         """Fetch available products"""
-        with self.client.get(f"{BASE_API_URL}/products", catch_response=True) as response:
+        with self.client.get(f"{BASE_API_URL}/product", catch_response=True) as response:
             if response.status_code == 200:
                 self.products = response.json()[:10]
                 response.success()
@@ -90,12 +89,17 @@ class OrderLoadTestTasks(TaskSet):
         
         for product in sampled:
             qty = random.randint(1, 3)
+            try:
+                price = float(product.get("price", 0))
+            except (TypeError, ValueError):
+                price = 0
+
             selected.append({
                 "productId": product.get("_id", product.get("id")),
                 "title": product.get("title", "Product"),
                 "image": product.get("image", ""),
                 "desc": product.get("desc", ""),
-                "price": product.get("price", 0),
+                "price": price,
                 "qty": qty
             })
         

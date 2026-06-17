@@ -7,6 +7,6 @@ RUN pip install --no-cache-dir -r requirements_loadtest.txt
 
 COPY . .
 
-ENV API_BASE_URL=http://backend:8080
+ENV API_BASE_URL=http://backend-service:8080
 
 ENTRYPOINT ["python", "load_test_orders.py"]
