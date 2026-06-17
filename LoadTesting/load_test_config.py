@@ -4,11 +4,11 @@ Edit this file to customize the load testing parameters
 """
 
 # API Configuration
-API_BASE_URL = "http://localhost:8080"
+API_BASE_URL = "https://bikkam.online"
 
 # Load Test Parameters
 NUM_USERS = 10                    # Number of unique test users to create
-NUM_ORDERS_PER_USER = 5           # Orders each user will place
+NUM_ORDERS_PER_USER = 20           # Orders each user will place
 CONCURRENT_REQUESTS = 5           # Number of concurrent threads
 
 # Random configuration

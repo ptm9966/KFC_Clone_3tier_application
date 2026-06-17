@@ -62,34 +62,71 @@ python -m locust -f load_test_locust.py --host=http://localhost:8080 \
 
 ## Configuration
 
-### Edit load_test_config.py
+### Configuration sources and precedence
+
+The load test scripts accept configuration from three places, evaluated in this order of precedence:
+
+1. Environment variables (highest priority)
+2. `load_test_config.py` values (if present in `LoadTesting/` and importable)
+3. Built-in defaults inside the script (lowest priority)
+
+This means you can quickly override behavior for a single run using env vars, or set reusable defaults in `load_test_config.py`.
+
+### Environment variables (recommended)
+
+Set the following environment variables to configure the tests:
+
+- `API_BASE_URL` — Base URL for the backend API (e.g. `https://bikkam.online`)
+- `LOAD_TEST_USERS` — Number of test users to create
+- `LOAD_TEST_ORDERS_PER_USER` — Orders each user will place
+- `LOAD_TEST_CONCURRENCY` — Number of concurrent threads/workers
+- `LOAD_TEST_USER_OFFSET` — Numeric offset to generate unique user numbers
+- `REQUEST_TIMEOUT` — HTTP request timeout in seconds
+
+PowerShell example:
+
+```powershell
+$env:API_BASE_URL = "https://bikkam.online"
+$env:LOAD_TEST_USERS = "10"
+$env:LOAD_TEST_ORDERS_PER_USER = "5"
+$env:LOAD_TEST_CONCURRENCY = "5"
+python LoadTesting/load_test_orders.py
+```
+
+Bash example:
+
+```bash
+export API_BASE_URL="https://bikkam.online"
+export LOAD_TEST_USERS=10
+export LOAD_TEST_ORDERS_PER_USER=5
+export LOAD_TEST_CONCURRENCY=5
+python LoadTesting/load_test_orders.py
+```
+
+Run the script from the repository root so the `LoadTesting` package is importable.
+
+### Using `load_test_config.py`
+
+You can set persistent defaults by editing `LoadTesting/load_test_config.py`. Example values:
 
 ```python
-# API Configuration
 API_BASE_URL = "http://localhost:8080"
-
-# Load Test Parameters
-NUM_USERS = 10                    # Number of test users to create
-NUM_ORDERS_PER_USER = 5           # Orders per user
-CONCURRENT_REQUESTS = 5           # Thread pool size
-
-# Test data
-ITEMS_PER_ORDER = (1, 4)          # Min-max items per order
-QUANTITY_RANGE = (1, 3)           # Min-max quantity per item
+NUM_USERS = 10
+NUM_ORDERS_PER_USER = 5
+CONCURRENT_REQUESTS = 5
+ITEMS_PER_ORDER = (1, 4)
+QUANTITY_RANGE = (1, 3)
 PAYMENT_METHODS = ["Card", "UPI", "Cash"]
 ```
 
-### Modify load_test_orders.py directly (if needed)
+Notes:
 
-Edit the configuration section at the top:
+- `load_test_orders.py` was updated to import `load_test_config.py` when present. Environment variables still override values from this file.
+- If Python cannot import `load_test_config` (e.g., running from a different working directory), prefer environment variables or run the script from the repository root.
 
-```python
-# Configuration
-API_BASE_URL = "http://localhost:8080"
-NUM_USERS = 10              # Number of test users
-NUM_ORDERS_PER_USER = 5     # Orders each user places
-CONCURRENT_REQUESTS = 5     # Concurrent threads
-```
+### Direct edit (not recommended)
+
+You can also change defaults by editing `LoadTesting/load_test_orders.py`, but using env vars or `load_test_config.py` keeps configuration centralized and easier to manage.
 
 ## Understanding Test Parameters
 

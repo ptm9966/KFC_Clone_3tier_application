@@ -14,22 +14,33 @@ from datetime import datetime
 from typing import Dict, List, Optional
 import statistics
 
-# Configuration
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8080")
+# Configuration: prefer values from LoadTesting/load_test_config.py, then environment, then defaults
+try:
+    import load_test_config as cfg
+except Exception:
+    cfg = None
+
+API_BASE_URL = os.getenv(
+    "API_BASE_URL",
+    getattr(cfg, "API_BASE_URL", "http://localhost:8080") if cfg is not None else "http://localhost:8080",
+)
 AUTH_ENDPOINT = f"{API_BASE_URL}/auth"
 API_ENDPOINT = f"{API_BASE_URL}/api"
 PRODUCTS_ENDPOINT = f"{API_ENDPOINT}/product"
 ORDERS_ENDPOINT = f"{API_ENDPOINT}/orders"
 
-# Load Testing Configuration
-NUM_USERS = int(os.getenv("LOAD_TEST_USERS", "5"))
-NUM_ORDERS_PER_USER = int(os.getenv("LOAD_TEST_ORDERS_PER_USER", "3"))
-CONCURRENT_REQUESTS = int(os.getenv("LOAD_TEST_CONCURRENCY", "2"))
+# Load Testing Configuration (env > config file > defaults)
+NUM_USERS = int(os.getenv("LOAD_TEST_USERS", str(getattr(cfg, "NUM_USERS", 5))))
+NUM_ORDERS_PER_USER = int(os.getenv("LOAD_TEST_ORDERS_PER_USER", str(getattr(cfg, "NUM_ORDERS_PER_USER", 3))))
+CONCURRENT_REQUESTS = int(os.getenv("LOAD_TEST_CONCURRENCY", str(getattr(cfg, "CONCURRENT_REQUESTS", 2))))
 USER_NUMBER_OFFSET = int(
-    os.getenv("LOAD_TEST_USER_OFFSET", str(int(time.time()) % 9_000_000))
+    os.getenv(
+        "LOAD_TEST_USER_OFFSET",
+        str(getattr(cfg, "USER_NUMBER_OFFSET", int(time.time()) % 9_000_000)),
+    )
 )
-PAYMENT_METHODS = ["Card", "UPI", "Cash"]
-ORDER_STATUSES = ["Placed"]
+PAYMENT_METHODS = getattr(cfg, "PAYMENT_METHODS", ["Card", "UPI", "Cash"]) if cfg is not None else ["Card", "UPI", "Cash"]
+ORDER_STATUSES = getattr(cfg, "ORDER_STATUSES", ["Placed"]) if cfg is not None else ["Placed"]
 
 # Metrics tracking
 metrics_lock = threading.Lock()
