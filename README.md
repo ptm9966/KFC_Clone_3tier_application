@@ -4,6 +4,8 @@ A fullstack restaurant clone with separate frontend, backend, and MongoDB servic
 
 This repository supports running each component independently using its own Dockerfile, as well as a combined Docker Compose setup.
 
+For local development instructions for the frontend, backend, and MongoDB, see [LOCAL_SETUP.md](LOCAL_SETUP.md).
+
 ---
 
 ## Project Structure
