@@ -4,7 +4,7 @@ Edit this file to customize the load testing parameters
 """
 
 # API Configuration
-API_BASE_URL = "http://135.171.192.243"
+API_BASE_URL = "http://bikkam.online"
 
 # Load Test Parameters
 NUM_USERS = 10                    # Number of unique test users to create

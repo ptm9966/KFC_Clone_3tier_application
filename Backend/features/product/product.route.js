@@ -1,6 +1,28 @@
 const { Router } = require("express");
 const Product = require("./product.model");
+const { safeGet, safeSet, safeDel, safeKeys, isRedisAvailable } = require("../../config/redis");
 const productRouter = Router();
+
+const CACHE_TTL = {
+  productDetail: 300,
+  productList: 180,
+  productSearch: 60,
+};
+
+async function clearProductCache(productId) {
+  if (productId) {
+    await safeDel(`product:${productId}`);
+  }
+
+  const keys = await safeKeys("products:*");
+  if (keys.length > 0) {
+    await Promise.all(keys.map((key) => safeDel(key)));
+  }
+}
+
+function normalizeProductId(productId) {
+  return String(productId || "").replace(/^:/, "");
+}
 
 /**
  * @swagger
@@ -23,25 +45,25 @@ const productRouter = Router();
  *         description: Error retrieving products
  */
 productRouter.get("/product", async (req, res) => {
-    let categories = req.query.categories;
-    if (categories) {
-        try {
-            // console.log(categories)
-            let items = await Product.find({ "categories": categories });
-            // let items = await Product.find({"title":{ "$regex": categories, "$options": "i" }});
+    const categories = req.query.categories;
+    const cacheKey = categories ? `products:categories:${categories}` : "products:all";
 
-            res.status(200).send(items);
-        } catch (error) {
-            console.log(error)
-            res.status(401).send({ "err": "Somthing went wrong" })
+    try {
+        const cached = await safeGet(cacheKey);
+        if (cached) {
+            return res.status(200).send(JSON.parse(cached));
         }
-    } else {
-        let items = await Product.find();
-        // let items = await Product.find({"title":{ "$regex": categories, "$options": "i" }});
 
+        const items = categories
+            ? await Product.find({ categories })
+            : await Product.find();
+
+        await safeSet(cacheKey, JSON.stringify(items), CACHE_TTL.productList);
         res.status(200).send(items);
+    } catch (error) {
+        console.error(error);
+        res.status(401).send({ err: "Something went wrong" });
     }
-
 });
 
 /**
@@ -66,16 +88,24 @@ productRouter.get("/product", async (req, res) => {
  *         description: Search error
  */
 productRouter.get("/product/search", async (req, res) => {
-    let q = req.query.q;
-    try {
-        console.log(q)
-        // let items = await Product.find({"categories":categories});
-        let items = await Product.find({ "title": { "$regex": q, "$options": "i" } });
+    const q = req.query.q;
+    if (!q) {
+        return res.status(400).send({ err: "Query parameter q is required" });
+    }
 
+    const cacheKey = `products:search:${q}`;
+    try {
+        const cached = await safeGet(cacheKey);
+        if (cached) {
+            return res.status(200).send(JSON.parse(cached));
+        }
+
+        const items = await Product.find({ title: { $regex: q, $options: "i" } });
+        await safeSet(cacheKey, JSON.stringify(items), CACHE_TTL.productSearch);
         res.status(200).send(items);
     } catch (error) {
-        console.log(error)
-        res.status(401).send({ "err": "Somthing went wrong" })
+        console.error(error);
+        res.status(401).send({ err: "Something went wrong" });
     }
 });
 
@@ -102,14 +132,23 @@ productRouter.get("/product/search", async (req, res) => {
  *         description: Error retrieving product
  */
 productRouter.get("/product/:productId", async (req, res) => {
-    let productId = req.params.productId.split(":").map(String)[1];
-    try {
+    const productId = normalizeProductId(req.params.productId);
+    const cacheKey = `product:${productId}`;
 
-        let only = await Product.findOne({ _id: productId });
+    try {
+        const cached = await safeGet(cacheKey);
+        if (cached) {
+            return res.status(200).send(JSON.parse(cached));
+        }
+
+        const only = await Product.findOne({ _id: productId });
+        if (only) {
+            await safeSet(cacheKey, JSON.stringify(only), CACHE_TTL.productDetail);
+        }
         return res.status(200).send(only);
     } catch (error) {
-        console.log(error)
-        res.status(401).send({ "err": "Somthing went wrong" })
+        console.error(error);
+        res.status(401).send({ err: "Something went wrong" });
     }
 });
 
@@ -147,16 +186,17 @@ productRouter.post("/product", async (req, res) => {
     const { title } = req.body;
     const existing = await Product.findOne({ title });
     if (existing) {
-        res.status(401).send({ message: "Product allredy persent in cart" })
-    } else {
-        try {
-            const new_cart = new Product(payload)
-            await new_cart.save()
-            res.status(200).send({ message: "Product created succefully" })
-        } catch (error) {
-            console.log(error)
-            res.status(401).send({ "err": "Somthing went wrong" })
-        }
+        return res.status(401).send({ message: "Product already present" });
+    }
+
+    try {
+        const newProduct = new Product(payload);
+        await newProduct.save();
+        await clearProductCache();
+        res.status(200).send({ message: "Product created successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(401).send({ err: "Something went wrong" });
     }
 });
 
@@ -182,19 +222,19 @@ productRouter.post("/product", async (req, res) => {
  *         description: Product not found
  */
 productRouter.delete("/product/:productId", async (req, res) => {
-    const productId = req.params.productId.split(":").map(String)[1]
-    console.log(productId)
-    const existing = await Product.findOne({ _id: productId })
+    const productId = normalizeProductId(req.params.productId);
+    const existing = await Product.findOne({ _id: productId });
     if (!existing) {
-        res.status(401).send({ message: "Product allredy deleted from product" })
-    } else {
-        try {
-            await Product.findOneAndDelete({ "_id": productId })
-            res.status(200).send({ message: "Product item deleted successfully" })
-        } catch (error) {
-            console.log(error)
-            res.status(400).send({ "err": "Somthing went wrong" })
-        }
+        return res.status(401).send({ message: "Product already deleted" });
+    }
+
+    try {
+        await Product.findOneAndDelete({ _id: productId });
+        await clearProductCache(productId);
+        res.status(200).send({ message: "Product item deleted successfully" });
+    } catch (error) {
+        console.error(error);
+        res.status(400).send({ err: "Something went wrong" });
     }
 });
 
@@ -231,15 +271,15 @@ productRouter.delete("/product/:productId", async (req, res) => {
  *         description: Error updating product
  */
 productRouter.patch("/product/:productId", async (req, res) => {
-    const productId = req.params.productId.split(":").map(String)[1]
-    const payload = req.body
-    // const note = await NoteModel.findOne({_id:noteID})
+    const productId = normalizeProductId(req.params.productId);
+    const payload = req.body;
     try {
-        await Product.findByIdAndUpdate({ _id: productId }, payload)
-        res.status(200).send({ message: "Product item updated successfully" })
+        await Product.findByIdAndUpdate(productId, payload);
+        await clearProductCache(productId);
+        res.status(200).send({ message: "Product item updated successfully" });
     } catch (error) {
-        console.log(error)
-        res.status(401).send({ "err": "Somthing went wrong" })
+        console.error(error);
+        res.status(401).send({ err: "Something went wrong" });
     }
 });
 

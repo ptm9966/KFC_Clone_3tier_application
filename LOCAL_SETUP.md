@@ -50,9 +50,18 @@ npm install
 PORT=8080
 DB_URL=mongodb://localhost:27017/kfc-database
 ALLOWED_ORIGINS=http://localhost:3000
+REDIS_CACHE_ENABLED=false
+# To enable Redis locally, use these values instead:
+# REDIS_CACHE_ENABLED=true
+# REDIS_HOST=127.0.0.1
+# REDIS_PORT=6379
+# REDIS_PASSWORD=
+# REDIS_TLS=false
 ```
 
 > `ALLOWED_ORIGINS` is the frontend origin allowed by the backend for CORS. Use the exact frontend URL, including the protocol and port, such as `http://localhost:3000`.
+>
+> If you do not have Redis locally available, keep `REDIS_CACHE_ENABLED=false` so the app falls back to MongoDB.
 
 4. Start the backend server:
 

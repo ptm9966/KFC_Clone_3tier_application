@@ -19,6 +19,7 @@
     "express": "^5.2.1",
     "mongoose": "^9.6.1",
     "nodemon": "^3.1.14",
+    "redis": "^5.0.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "prom-client": "^14.2.0"
