@@ -34,8 +34,8 @@ DB_URL=mongodb+srv://<username>:<password>@<cluster-name>.mongodb.net/<database-
 # Or for local MongoDB:
 # DB_URL=mongodb://localhost:27017/kfc-database
 
-# Frontend URL (for CORS configuration)
-FRONTEND_URL=http://localhost:3000
+# Frontend origin allowed by CORS
+ALLOWED_ORIGINS=http://localhost:3000
 ```
 
 ### Environment Variables Explanation:
@@ -44,7 +44,7 @@ FRONTEND_URL=http://localhost:3000
 |----------|-------------|---------|
 | `PORT` | Server port | `8080` |
 | `DB_URL` | MongoDB connection string | `mongodb+srv://user:pass@cluster.mongodb.net/db` |
-| `FRONTEND_URL` | Frontend application URL | `http://localhost:3000` |
+| `ALLOWED_ORIGINS` | Frontend origin allowed by CORS | `http://localhost:3000` |
 
 ## Database Setup
 
@@ -120,15 +120,15 @@ Listening at http://localhost:8080
 
 The application is configured to accept requests from the frontend. To enable cross-origin requests:
 
-1. Update the `cors()` configuration in `index.js` if needed:
-   ```javascript
-   app.use(cors({
-     origin: process.env.FRONTEND_URL || "http://localhost:3000",
-     credentials: true
-   }));
+1. Set `ALLOWED_ORIGINS` in the backend `.env` file with the frontend origin(s) you want to allow.
+   ```env
+   ALLOWED_ORIGINS=http://localhost:3000
    ```
 
-2. Ensure `FRONTEND_URL` is set in `.env` file
+2. For multiple origins, separate them with commas:
+   ```env
+   ALLOWED_ORIGINS=http://localhost:3000,https://your-frontend-domain.com
+   ```
 
 ## Troubleshooting
 

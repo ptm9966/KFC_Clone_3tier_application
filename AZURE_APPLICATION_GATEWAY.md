@@ -1,403 +1,257 @@
-# Azure Application Gateway Setup for KFC React Application
+# Azure Application Gateway Setup for KFC App Service Deployment
 
 ## Overview
 
-Azure Application Gateway is a layer-7 (Application Layer) load balancer that can route traffic based on URL paths, hostnames, and HTTP headers. This guide explains how to use it for your full-stack KFC application.
+Azure Application Gateway is a layer-7 load balancer that can sit in front of your KFC frontend and backend applications hosted on Azure App Service. It provides public ingress, SSL termination, path-based routing, and optional WAF protection.
 
-## Architecture Overview
+## Target Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Internet Users                           │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ▼
-        ┌────────────────────────────────────────┐
-        │   Azure Application Gateway            │
-        │   - SSL/TLS Termination                │
-        │   - URL-based routing                  │
-        │   - Request/Response rewrites          │
-        │   - WAF Protection                     │
-        └────────────┬──────────────┬────────────┘
-                     │              │
-        ┌────────────▼──┐   ┌──────▼──────────┐
-        │  Frontend VM  │   │  Backend VM     │
-        │ (React App)   │   │ (Node.js Server)│
-        │ Port 3000     │   │ Port 8080       │
-        └───────────────┘   └─────────────────┘
+```text
+Internet Users
+      |
+      v
+Azure Application Gateway
+  - Public IP
+  - HTTPS listener
+  - Path-based routing
+  - Optional WAF
+      |
+      +------------------------+
+      |                        |
+      v                        v
+Frontend App Service      Backend App Service
+(kfc-frontend)            (kfc-backend)
 ```
 
-## Components Needed
+## Recommended Setup
 
-### 1. **Azure Virtual Network (VNet)**
-- Host your VMs and Application Gateway
-- Provides network isolation and security
+### 1. Create the App Services
 
-### 2. **Azure VMs**
-- **Frontend VM**: Running React application (port 3000)
-- **Backend VM**: Running Node.js/Express server (port 8080)
+1. Create an Azure App Service Plan using Linux.
+2. Create two Web Apps:
+   - kfc-frontend
+   - kfc-backend
+3. Deploy the React frontend and the Node.js/Express backend separately.
 
-### 3. **Azure Application Gateway**
-- Routes requests based on URL paths
-- Handles SSL/TLS encryption
-- Load balances between backend pools
+### 2. Configure Backend Settings
 
-### 4. **Azure Storage Account** (Optional)
-- Store application logs and backups
+---- For the backend App Service, add these application settings: ----
+
+- PORT: 8080
+- DB_URL: your Azure Cosmos DB MongoDB connection string
+- FRONTEND_URL: your frontend App Service URL
+
+----  For the frontend App Service, set:----
+
+- REACT_APP_BACKEND_URL: your Application Gateway public URL or "" 
+- REACT_APP_BACKEND_URL=""  This will use same routing domain or ip adress so that we can pass trafic through app gateway
+
 
 ## Application Gateway Configuration
 
-### Step 1: Create Application Gateway Resource
+### Step 1: Create the Application Gateway
 
-**In Azure Portal:**
-1. Create new resource → "Application Gateway"
-2. **Basics:**
-   - Name: `kfc-app-gateway`
-   - Tier: Standard v2
-   - Enable autoscaling: Yes (2-10 instances)
+In the Azure portal:
 
-3. **Frontends:**
-   - Create public IP address
-   - Add HTTPS listener (if using SSL certificate)
+1. Create a new Application Gateway resource.
+2. Choose Standard v2.
+3. Create or attach a public IP address.
+4. Place it in a VNet that can reach the App Services.
 
-### Step 2: Configure Backend Pools
+### Step 2: Create Backend Pools
 
-#### Pool 1: Frontend Pool
-```
-Name: frontend-pool
-Target Type: Virtual Machine
-Targets: Frontend VM (private IP)
-Port: 3000
-Protocol: HTTP
-```
+Create two backend pools:
 
-#### Pool 2: Backend API Pool
-```
-Name: backend-pool
-Target Type: Virtual Machine
-Targets: Backend VM (private IP)
-Port: 8080
-Protocol: HTTP
-```
+- Frontend pool
+  - Name : web-backendpool
+  - Target type: app-service
+  - Target: kfc-frontend App Service
+
+- Backend pool
+  - Name : api-backendpool
+  - Target type: app-service
+  - Target: kfc-backend App Service
+
+If your portal does not expose a direct App Service target type, use the App Service FQDN as the backend target.
 
 ### Step 3: Create HTTP Settings
+If your backend is Azure App Service, it supports HTTP, but many App Services are configured with "HTTPS Only" enabled.
 
-#### For Frontend
-```
-Name: frontend-http-settings
-Protocol: HTTP
-Port: 3000
-Cookie-based affinity: Disabled
-Host override: Use backend target's FQDN
-```
+If HTTPS Only = On:
 
-#### For Backend
-```
-Name: backend-http-settings
-Protocol: HTTP
-Port: 8080
-Cookie-based affinity: Disabled
-Host override: Leave empty or use backend FQDN
-```
+❌ Application Gateway cannot communicate with the App Service over HTTP.
+You must use HTTPS for the backend settings.
 
-### Step 4: Configure URL Path-Based Routing Rules
+If HTTPS Only = Off:
 
-**Rule 1: Frontend Route**
-```
-Rule Name: frontend-rule
-Listener: 
-  - Name: frontend-listener
-  - Protocol: HTTPS (or HTTP)
-  - Port: 443 (or 80)
-  - Hostname: example.com
+✅ Application Gateway can use HTTP to connect to the App Service.
 
-Path-based routing:
-  - Path: /*
-  - Backend pool: frontend-pool
-  - HTTP settings: frontend-http-settings
-```
-
-**Rule 2: API Route**
-```
-Rule Name: api-rule
-Listener: 
-  - Name: api-listener
-  - Protocol: HTTPS (or HTTP)
-  - Port: 443 (or 80)
-  - Hostname: api.example.com (or api/* path)
-
-Path-based routing:
-  - Path: /api/*
-  - Backend pool: backend-pool
-  - HTTP settings: backend-http-settings
-```
-
-### Step 5: Add Rewrite Rules (Optional but Recommended)
-
-**Rewrite Rule: Remove /api prefix when forwarding to backend**
-```
-Rule Set Name: api-rewrite
-
-Condition:
-- Variable: http_request_uri
-- Pattern: ^/api/(.*)
-- Action: URL rewrite
-- Rewrite URL: /{1}
-```
-
-This way:
-- `example.com/api/product` → Backend receives `/product`
-- `example.com/api/cart` → Backend receives `/cart`
-
-## Detailed Routing Configuration
-
-### Scenario 1: Single Domain with Path-Based Routing
-
-**User requests:**
-- `https://myapp.example.com/` → Routes to Frontend (React)
-- `https://myapp.example.com/api/product` → Routes to Backend API
-
-**Application Gateway Configuration:**
-```
-Listener: myapp.example.com:443 (HTTPS)
-
-Path-based routing rules:
-  ├─ Path: /api/*
-  │  └─ Backend Pool: backend-pool
-  │     HTTP Settings: backend-http-settings
-  └─ Path: /*
-     └─ Backend Pool: frontend-pool
-        HTTP Settings: frontend-http-settings
-```
-
-### Scenario 2: Multiple Domains
-
-**User requests:**
-- `https://app.example.com/` → Routes to Frontend
-- `https://api.example.com/` → Routes to Backend
-
-**Application Gateway Configuration:**
-```
-Listener 1: app.example.com:443
-  └─ Backend Pool: frontend-pool
-  
-Listener 2: api.example.com:443
-  └─ Backend Pool: backend-pool
-```
-
-## SSL/TLS Configuration
-
-### Step 1: Upload SSL Certificate
-
-1. Go to Application Gateway → Listeners
-2. Create HTTPS listener
-3. Upload SSL certificate (.pfx or .pem)
-4. Enable HTTPS redirect from HTTP
-
-### Step 2: Backend HTTPS (Optional)
-
-If backend also uses HTTPS:
-```
-HTTP Settings:
+#### Frontend HTTP Settings
+- Name: web-http-settings
 - Protocol: HTTPS
-- Port: 443 (or 8443)
-- Pick hostname from backend target
-- Create custom probe to verify backend health
-```
+- Port: 443
+- Cookie-based affinity: Disabled
+- Override with new host name : yes
+- Pick host name from backend targer
+- Host override: Leave empty unless you need a specific host header
+
+#### Backend HTTP Settings
+- Name: api-http-settings
+- Protocol: HTTPS
+- Port: 443
+- Cookie-based affinity: Disabled
+- Override with new host name : yes
+- Pick host name from backend targer
+- Host override: Leave empty unless you need a specific host header
+
+### Step 4: Listeners creation
+we can only craete one listener for one port number for basic
+
+we can create multiple listerners for one portnumener for multisite and pass hostname
+
+#### Listner type: BASIC 
+In basic routing we can use direct IP adresss of gateway .
+
+Listner_name =
+frontend_ip =
+protocol =
+port =
+Listener type: Basic
+
+
+we use : http://20.235.36.181  we can access using this 
+
+#### Listner rule type : Multisite
+
+we need to pass Host Name like : bikkam.online 
+
+Listner_name =
+frontend_ip =
+protocol =
+port =
+Listener type: multisite
+host_type = single/multiple
+Host_name : bikkam.online
+
+
+### Rules creation 
+
+rules combines listner and backend pool to make routing possible
+
+rule_name = web_http_routing
+priorty = 
+
+Lister section : select listener -- which frontend whic port number it recives request
+
+Backend Target : we need add backend taget and pathbasesd routing
+
+#### Option A: Single Domain with Path-Based Routing
+
+Use one public listener and route traffic like this:
+
+- Path: /* -> frontend pool
+- Path: /api/* -> backend pool
+- path: /auth/* -> backend
+
+Example:
+- https://yourdomain.com/ -> frontend App Service
+- https://yourdomain.com/api/product -> backend App Service
+
+#### Option B: Separate Hostnames
+
+Use two listeners:
+
+- app.yourdomain.com -> frontend pool
+- api.yourdomain.com -> backend pool
+
+## Recommended URL Routing
+
+If the frontend calls the API through the gateway, use:
+
+- REACT_APP_BACKEND_URL=https://yourdomain.com/api
+
+This allows the browser to reach the backend through the Application Gateway rather than directly calling the App Service endpoint.
 
 ## Health Probes
 
-### Frontend Health Probe
-```
-Name: frontend-probe
-Protocol: HTTP
-Host: <frontend-vm-ip>
-Port: 3000
-Path: /
-Interval: 30 seconds
-Timeout: 30 seconds
-Healthy threshold: 2
-Unhealthy threshold: 3
-```
+### Frontend Probe
+- Protocol: HTTP
+- Host: kfc-frontend.azurewebsites.net
+- Port: 80
+- Path: /
 
-### Backend Health Probe
-```
-Name: backend-probe
-Protocol: HTTP
-Host: <backend-vm-ip>
-Port: 8080
-Path: /api/product (or any available endpoint)
-Interval: 30 seconds
-Timeout: 30 seconds
-Healthy threshold: 2
-Unhealthy threshold: 3
-```
+### Backend Probe
+- Protocol: HTTP
+- Host: kfc-backend.azurewebsites.net
+- Port: 80
+- Path: /api/product
+
+## SSL/TLS Configuration
+
+1. Create an HTTPS listener on the Application Gateway.
+2. Upload your SSL certificate.
+3. Enable HTTPS redirect from HTTP to HTTPS.
+4. Configure the frontend and backend App Services to work behind the gateway using the public hostnames.
+
+## Optional Rewrite Rules
+
+If your backend expects requests without the /api prefix, add a rewrite rule:
+
+- Match: /api/(.*)
+- Rewrite to: /$1
 
 ## CORS Configuration
 
-### Update Backend Express Server
+If the frontend is served from the Application Gateway hostname and the backend is reached through /api, update the backend CORS policy to allow the gateway domain.
+
+Example:
 
 ```javascript
-// In Backend/index.js
 const cors = require("cors");
 
 app.use(cors({
-  origin: ["https://myapp.example.com", "https://app.example.com"],
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  origin: ["https://yourdomain.com"],
+  credentials: true
 }));
 ```
 
-### Application Gateway Request/Response Headers
+## WAF (Optional)
 
-**Request Header Modification Rule:**
-```
-Rule Set: add-headers
+Enable WAF on the Application Gateway for:
 
-Condition: Match all
-Actions:
-  - Add request header
-    Name: X-Forwarded-For
-    Value: {http_request_headers}
-  - Add request header
-    Name: X-Forwarded-Proto
-    Value: https
-```
+- SQL injection protection
+- XSS protection
+- Bot blocking
+- Rate limiting
 
-## Frontend React Configuration
+## Private Access and VNet Integration
 
-### Update API Base URL
+If you want the App Services to be private by default:
 
-**Create `.env` file in React app:**
-```
-REACT_APP_API_URL=https://myapp.example.com/api
-```
+1. Enable VNet integration on both App Services.
+2. Add private endpoints if required.
+3. Ensure the Application Gateway can reach the App Services over the VNet.
 
-Or if using different domain:
-```
-REACT_APP_API_URL=https://api.example.com
-```
-
-**Update API calls in React:**
-```javascript
-// utils/api.js or services/api.js
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
-
-export const fetchProducts = async () => {
-  const response = await fetch(`${API_BASE_URL}/product`);
-  return response.json();
-};
-
-export const login = async (credentials) => {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(credentials)
-  });
-  return response.json();
-};
-```
-
-## WAF (Web Application Firewall) - Optional
-
-### Enable WAF on Application Gateway
-
-1. **WAF Policy:**
-   - Protection Mode: Detection or Prevention
-   - Managed Rules: OWASP CRS (Core Rule Set)
-   - Custom Rules: Add specific rules for your app
-
-2. **Common Rules to Add:**
-   ```
-   - Block SQL Injection attempts
-   - Block XSS attempts
-   - Block malicious bots
-   - Rate limiting per IP
-   ```
-
-3. **Example Custom Rule:**
-   ```
-   Name: block-suspicious-agents
-   Priority: 1
-   Rule Type: Geo-match
-   Match Variables: RemoteAddr
-   Operator: GeoMatch
-   Values: [List of blocked countries]
-   Action: Block
-   ```
-
-## Load Balancing & Auto-Scaling
-
-### Auto-scale Backend Pool
-
-```
-Backend Pool: backend-pool
-  ├─ Current VMs: 1
-  ├─ Min instances: 1
-  ├─ Max instances: 5
-  └─ Scale based on:
-     - CPU usage > 70%
-     - Memory usage > 80%
-```
-
-### Round-robin Load Balancing
-
-**HTTP Settings:**
-```
-Load balancing algorithm: Round robin
-Connection Draining: 30 seconds
-Session affinity: Disabled (or Enabled if needed)
-```
-
-## Monitoring & Logging
-
-### Enable Diagnostics
-
-1. **Application Gateway Logs:**
-   - Access logs
-   - Performance logs
-   - Firewall logs (if WAF enabled)
-
-2. **Log Destinations:**
-   - Azure Storage Account
-   - Log Analytics Workspace
-   - Event Hub
-
-3. **Alerts to Configure:**
-   ```
-   - Backend pool health status
-   - CPU usage > 80%
-   - Memory usage > 80%
-   - Request count threshold exceeded
-   - 5xx errors rate > 5%
-   ```
-
-### Sample Monitoring Query (KQL)
-```kusto
-AzureDiagnostics
-| where ResourceProvider == "MICROSOFT.NETWORK" and ResourceType == "APPLICATIONGATEWAYS"
-| where httpStatus_d >= 500
-| summarize Count=count() by httpStatus_d, clientIP_s
-| sort by Count desc
-```
+Important note:
+- The frontend React app runs in the browser, so it should not call a private backend directly.
+- Use the Application Gateway public endpoint for frontend-to-backend API traffic.
 
 ## DNS Configuration
 
-### Point Domain to Application Gateway
+Point your custom domain to the Application Gateway public IP:
 
-1. **Get Application Gateway Public IP:**
-   ```
-   In Azure Portal → Application Gateway → Overview → Public IP Address
-   ```
+- Type: A record
+- Name: @ or www
+- Value: Application Gateway public IP
 
-2. **Update DNS Records:**
-   ```
-   Type: A (or CNAME)
-   Name: myapp
-   Value: <public-ip-address>
-   TTL: 3600
-   ```
+## Summary
+
+This design uses Azure Application Gateway as the public entry point for a KFC application deployed on App Service. The gateway routes:
+
+- frontend traffic to the React frontend App Service
+- API traffic to the Node.js backend App Service
+
+This pattern is ideal when you want centralized TLS, routing, and security without managing VMs.
 
 3. **Example DNS Setup:**
    ```

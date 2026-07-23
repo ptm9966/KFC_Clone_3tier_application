@@ -49,8 +49,10 @@ npm install
 ```env
 PORT=8080
 DB_URL=mongodb://localhost:27017/kfc-database
-FRONTEND_URL=http://localhost:3000
+ALLOWED_ORIGINS=http://localhost:3000
 ```
+
+> `ALLOWED_ORIGINS` is the frontend origin allowed by the backend for CORS. Use the exact frontend URL, including the protocol and port, such as `http://localhost:3000`.
 
 4. Start the backend server:
 
@@ -107,5 +109,6 @@ http://localhost:3000
 
 - If the backend cannot connect to MongoDB, confirm that the MongoDB service is running and that the `DB_URL` value is correct.
 - If the frontend cannot reach the backend, make sure `REACT_APP_BACKEND_URL` points to `http://localhost:8080`.
+- If you see a CORS error in the browser, make sure `ALLOWED_ORIGINS` in the Backend `.env` matches the frontend origin exactly (for example `http://localhost:3000`).
 - If a port is already in use, stop the conflicting process or change the port in the relevant `.env` file.
 - For frontend dependency issues, rerun the install command with `--legacy-peer-deps`.

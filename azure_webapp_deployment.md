@@ -47,4 +47,32 @@
 8) in genral setting update the startup command to serve the frontend code using a static file server like serve or any other static file server of your choice. For example, you can use the following command:
    - pm2 serve /home/site/wwwroot --no-daemon --spa 
 
+--------------------------------  Private Connection steup (private Endpoint)-------------------
 
+#############################  Mongodb private endpoint #################
+
+add privatend point to monodb . it will private link and nic card . block the other access.
+
+
+################### kfc-backend vnet integration################
+under networking add vnet integration to seprate subnet . it will able to connect to database
+added privatendpoint so that we can block the inbound access and disable public access
+
+if you like to access from another vm like jump host from another vnet
+1) make vnet peering and add vnet link in private dns zone  then it will be access .
+
+
+################### kfc-frontend private endpoint and vnet integration ################
+
+1) adding vnet integration from networking . when disable the privatendpoint .
+important : frontend unable to access backend website .it won't load /menu becuase fronten runs on web browser it unable to reach to backend . public IP unable to access.
+
+2) After adding privte endpint . we are able to access backend /menu .
+
+When you run Inside network it resloves privte IP adress , able access backend
+
+when you run outside network it resolves public IP address . unable to access .
+S
+This whole act as Internal application.
+
+#############################################################################
