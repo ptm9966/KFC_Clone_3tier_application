@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const mongoose = require("mongoose");
 const swaggerUi = require("swagger-ui-express");
 // Prometheus client for custom metrics
 const client = require('prom-client');
@@ -103,6 +104,30 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
 
 app.get("/", (req, res) => {
   res.redirect("/api-docs");
+});
+
+app.get("/api/healthz", (req, res) => {
+  const ready = mongoose.connection.readyState === 1;
+  res.status(ready ? 200 : 503).json({
+    status: ready ? "ok" : "starting",
+    live: true,
+    ready,
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.round(process.uptime())
+  });
+});
+
+app.get("/api/healthz/live", (req, res) => {
+  res.status(200).json({ status: "ok", live: true });
+});
+
+app.get("/api/healthz/ready", (req, res) => {
+  const ready = mongoose.connection.readyState === 1;
+  res.status(ready ? 200 : 503).json({
+    status: ready ? "ok" : "not-ready",
+    live: true,
+    ready
+  });
 });
 
 app.use("/auth", userRoute);

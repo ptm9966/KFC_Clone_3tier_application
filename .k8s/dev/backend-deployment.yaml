@@ -40,13 +40,13 @@ spec:
               key: ALLOWED_ORIGINS
         readinessProbe:
           httpGet:
-            path: /api-docs
+            path: /api/healthz
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
         livenessProbe:
           httpGet:
-            path: /api-docs
+            path: /api/healthz
             port: 8080
           initialDelaySeconds: 60
           periodSeconds: 30
