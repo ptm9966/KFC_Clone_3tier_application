@@ -1,6 +1,6 @@
 const { Router } = require("express");
 const Product = require("./product.model");
-const { safeGet, safeSet, safeDel, safeKeys, isRedisAvailable } = require("../../config/redis");
+const { safeGet, safeSet, safeDel, safeKeys, parseCachedValue } = require("../../config/redis");
 const productRouter = Router();
 
 const CACHE_TTL = {
@@ -49,9 +49,9 @@ productRouter.get("/product", async (req, res) => {
     const cacheKey = categories ? `products:categories:${categories}` : "products:all";
 
     try {
-        const cached = await safeGet(cacheKey);
-        if (cached) {
-            return res.status(200).send(JSON.parse(cached));
+        const cached = parseCachedValue(await safeGet(cacheKey));
+        if (cached !== null && cached !== undefined) {
+            return res.status(200).send(cached);
         }
 
         const items = categories
@@ -95,9 +95,9 @@ productRouter.get("/product/search", async (req, res) => {
 
     const cacheKey = `products:search:${q}`;
     try {
-        const cached = await safeGet(cacheKey);
-        if (cached) {
-            return res.status(200).send(JSON.parse(cached));
+        const cached = parseCachedValue(await safeGet(cacheKey));
+        if (cached !== null && cached !== undefined) {
+            return res.status(200).send(cached);
         }
 
         const items = await Product.find({ title: { $regex: q, $options: "i" } });
@@ -136,9 +136,9 @@ productRouter.get("/product/:productId", async (req, res) => {
     const cacheKey = `product:${productId}`;
 
     try {
-        const cached = await safeGet(cacheKey);
-        if (cached) {
-            return res.status(200).send(JSON.parse(cached));
+        const cached = parseCachedValue(await safeGet(cacheKey));
+        if (cached !== null && cached !== undefined) {
+            return res.status(200).send(cached);
         }
 
         const only = await Product.findOne({ _id: productId });

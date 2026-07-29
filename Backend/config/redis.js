@@ -1,11 +1,11 @@
 const redis = require("redis");
 
-const REDIS_ENABLED = process.env.REDIS_CACHE_ENABLED === "true";
+const REDIS_ENABLED = String(process.env.REDIS_CACHE_ENABLED || "false").toLowerCase() === "true";
 
 const redisHost = process.env.REDIS_HOST;
 const redisPort = Number(process.env.REDIS_PORT || 6379);
 const redisPassword = process.env.REDIS_PASSWORD;
-const redisTls = process.env.REDIS_TLS === "true";
+const redisTls = String(process.env.REDIS_TLS || "false").toLowerCase() === "true";
 
 let client = null;
 let clientReady = false;
@@ -97,6 +97,28 @@ function isRedisAvailable() {
   return redisRuntimeEnabled && redisAvailable && client && client.isOpen;
 }
 
+function parseCachedValue(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(trimmedValue);
+  } catch (err) {
+    console.warn("Unable to parse Redis cache payload:", err.message || err);
+    return null;
+  }
+}
+
 async function safeGet(key) {
   const redisClient = await getRedisClient();
   if (!redisClient || !isRedisAvailable()) {
@@ -167,6 +189,7 @@ module.exports = {
   REDIS_ENABLED,
   getRedisClient,
   isRedisAvailable,
+  parseCachedValue,
   safeGet,
   safeSet,
   safeDel,
