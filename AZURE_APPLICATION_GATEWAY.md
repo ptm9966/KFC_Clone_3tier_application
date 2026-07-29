@@ -215,6 +215,172 @@ app.use(cors({
 }));
 ```
 
+## API Management + Application Gateway Flow
+
+If you want to put Azure API Management (APIM) in front of this architecture, the request flow becomes:
+
+```text
+Client
+  |
+  v
+Azure API Management
+  - Auth / policies / throttling / subscription validation
+  |
+  v
+Azure Application Gateway
+  - Public listener
+  - Host and path-based routing
+  |
+  +----------------------+
+  |                      |
+  v                      v
+Frontend App Service   Backend App Service
+```
+
+### How the re-routing happens
+
+1. The client calls an APIM endpoint such as:
+   - https://apim.yourdomain.com/api/product
+
+2. APIM receives the request and applies policies such as:
+   - API key validation
+   - JWT validation
+   - rate limiting
+   - request logging
+
+3. APIM forwards the request to the Application Gateway backend URL, for example:
+   - https://appgw.yourdomain.com/api/product
+
+4. The Application Gateway listener matches the host and path and re-routes the request to the correct backend pool:
+   - /api/* -> api-backendpool
+   - /* -> web-backendpool
+
+5. The backend App Service receives the request and responds normally.
+
+### Example APIM backend configuration
+
+In APIM, set the backend URL to the Application Gateway public endpoint:
+
+```text
+Backend URL: https://appgw.yourdomain.com
+```
+
+Then configure the API operation to call:
+
+```text
+/api/product
+```
+
+### Recommended routing rules
+
+- Frontend route:
+  - Path: /* -> web-backendpool
+- Backend route:
+  - Path: /api/* -> api-backendpool
+- Auth route:
+  - Path: /auth/* -> api-backendpool
+
+### Important note
+
+APIM and Application Gateway are complementary:
+- APIM handles API governance, security, and policy enforcement.
+- Application Gateway handles Layer 7 routing, TLS termination, and path-based forwarding.
+
+So the request is not directly sent to the App Service from the client. Instead, it flows through APIM first, then the Application Gateway, and finally reaches the right App Service.
+
+## Application Gateway Front-End, APIM in the Backend Tier
+
+A more secure pattern is to place Azure Application Gateway in front of the public entry point and keep Azure API Management (APIM) as the internal API gateway tier behind it.
+
+```text
+Internet Users
+  |
+  v
+Azure Application Gateway
+  - Public listener
+  - TLS termination
+  - Path-based routing
+  |
+  v
+Azure API Management
+  - Policy enforcement
+  - Authentication
+  - Rate limiting
+  |
+  v
+Backend App Services / APIs
+```
+
+### Recommended design
+
+- Application Gateway handles public ingress and routing.
+- APIM handles API governance, throttling, and security policies.
+- Backend App Services remain private or partially private behind the APIM layer.
+
+### VNet Integration Steps
+
+#### 1. Create or use a VNet
+Create a VNet with separate subnets for:
+
+- Application Gateway subnet
+- APIM subnet
+- App Service integration subnet
+- Optional private endpoint subnet
+
+Example subnet names:
+- `appgw-subnet`
+- `apim-subnet`
+- `appsvc-integration-subnet`
+- `priv-endpoints-subnet`
+
+#### 2. Enable VNet integration for App Services
+For the frontend and backend App Services:
+
+1. Open the App Service in the Azure portal.
+2. Go to Networking.
+3. Enable VNet integration.
+4. Select the integration subnet created for App Service outbound traffic.
+
+This allows the App Services to reach private resources inside the VNet.
+
+#### 3. Deploy APIM inside the VNet
+Create or configure APIM with VNet integration:
+
+1. Go to APIM > Network.
+2. Select VNet injection or VNet integration based on your APIM tier.
+3. Attach APIM to the `apim-subnet`.
+4. Ensure the APIM instance can reach the backend App Services over HTTPS.
+
+#### 4. Configure Application Gateway backend target
+In Application Gateway:
+
+1. Create a backend pool for APIM.
+2. Set the target to the APIM private FQDN or private IP address.
+3. Use HTTPS settings for the backend health probe and HTTP settings.
+4. Configure routing rules so public traffic is forwarded to APIM.
+
+#### 5. Configure private DNS
+If APIM and backend services are private, add DNS entries for internal resolution:
+
+- Create a private DNS zone for `privatelink.azure-api.net` if using private endpoints.
+- Add records for APIM private endpoints.
+- Ensure App Gateway and APIM can resolve the private hostnames correctly.
+
+#### 6. Apply NSG rules
+Use NSGs to allow only required traffic:
+
+- Allow inbound HTTPS from the Application Gateway subnet to APIM.
+- Allow outbound HTTPS from APIM to backend App Services.
+- Allow required health and management traffic only.
+
+#### 7. Validate the private path
+After configuration, test the flow:
+
+1. Call the public Application Gateway endpoint.
+2. Confirm the request reaches APIM.
+3. Confirm APIM forwards the request to the correct backend service.
+4. Check that the backend is reachable only through the private network path.
+
 ## WAF (Optional)
 
 Enable WAF on the Application Gateway for:
@@ -224,26 +390,6 @@ Enable WAF on the Application Gateway for:
 - Bot blocking
 - Rate limiting
 
-## Private Access and VNet Integration
-
-If you want the App Services to be private by default:
-
-1. Enable VNet integration on both App Services.
-2. Add private endpoints if required.
-3. Ensure the Application Gateway can reach the App Services over the VNet.
-
-Important note:
-- The frontend React app runs in the browser, so it should not call a private backend directly.
-- Use the Application Gateway public endpoint for frontend-to-backend API traffic.
-
-## DNS Configuration
-
-Point your custom domain to the Application Gateway public IP:
-
-- Type: A record
-- Name: @ or www
-- Value: Application Gateway public IP
-
 ## Summary
 
 This design uses Azure Application Gateway as the public entry point for a KFC application deployed on App Service. The gateway routes:
@@ -251,28 +397,7 @@ This design uses Azure Application Gateway as the public entry point for a KFC a
 - frontend traffic to the React frontend App Service
 - API traffic to the Node.js backend App Service
 
-This pattern is ideal when you want centralized TLS, routing, and security without managing VMs.
-
-3. **Example DNS Setup:**
-   ```
-   myapp.example.com      A    203.0.113.45
-   api.example.com        A    203.0.113.45
-   *.myapp.example.com    A    203.0.113.45
-   ```
-
-## Cost Estimation
-
-| Component | Estimated Cost/Month |
-|-----------|----------------------|
-| Application Gateway (Standard v2) | $20-30 |
-| Data processed | ~$0.60 per GB |
-| New connections | ~$0.009 per connection |
-| Application Gateway hours | ~$15-20 |
-| **Total** | **$50-100** |
-
-*Note: Costs vary by region and usage*
-
-## Security Best Practices
+This pattern is ideal when you want centralized TLS, routing, and security without managin
 
 ### 1. Network Security
 - Place VMs in private subnets
@@ -348,61 +473,5 @@ Increase timeout in HTTP Settings:
   - Connection idle timeout: 60 seconds
 ```
 
-## Migration Steps
+########################################3
 
-### Phase 1: Preparation
-1. Create VMs in Azure
-2. Deploy frontend (React) on VM
-3. Deploy backend (Node.js) on VM
-4. Create Application Gateway
-
-### Phase 2: Configuration
-1. Configure backend pools
-2. Set up HTTP settings
-3. Create routing rules
-4. Configure SSL/TLS
-5. Set up health probes
-
-### Phase 3: Testing
-1. Test routing rules
-2. Verify CORS configuration
-3. Test SSL/TLS
-4. Load testing
-
-### Phase 4: Go Live
-1. Update DNS to point to Application Gateway
-2. Monitor metrics
-3. Set up alerts
-4. Gradually move traffic
-
-## Monitoring Dashboard Example
-
-**Create Azure Dashboard with:**
-- Application Gateway health
-- Backend pool status
-- Request throughput
-- Error rates
-- Latency metrics
-- Active connections
-
-## Additional Resources
-
-- [Azure Application Gateway Documentation](https://docs.microsoft.com/en-us/azure/application-gateway/)
-- [URL-based Routing](https://docs.microsoft.com/en-us/azure/application-gateway/url-route-overview)
-- [WAF Configuration](https://docs.microsoft.com/en-us/azure/web-application-firewall/)
-- [Azure Pricing Calculator](https://azure.microsoft.com/en-us/pricing/calculator/)
-
-## Summary
-
-**Benefits of using Azure Application Gateway:**
-✅ URL-based routing for multiple backends
-✅ SSL/TLS termination
-✅ Load balancing across instances
-✅ WAF protection
-✅ Auto-scaling support
-✅ Health monitoring
-✅ Request rewrites
-✅ Multi-site hosting
-✅ Managed service (no infrastructure management)
-
-This setup provides a production-ready, scalable architecture for your KFC application!
